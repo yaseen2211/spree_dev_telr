@@ -8,14 +8,14 @@ module Spree
 
       begin
         result = hit
-        order = @order
+        order  = @order
 
-        ref = result.parsed_response.dig("order","ref")
-        url = result.parsed_response.dig("order","url")
+        ref   = result.parsed_response.dig("order","ref")
+        url   = result.parsed_response.dig("order","url")
         error =  result.parsed_response.dig("error") || []
 
         if(url.blank? || ref.blank?)
-          flash[:error] = Spree.t('flash.generic_error', scope: 'telr', reasons: error.map{|k,v|k.to_s+':'+v.to_s}.join(','))
+          flash.now[:error] = Spree.t('flash.generic_error', scope: 'telr', reasons: error.map{|k,v|k.to_s+':'+v.to_s}.join(','))
           redirect_to checkout_state_path(:payment)
         else
           order.payments.create!({
@@ -25,7 +25,7 @@ module Spree
             amount: order.total,
             payment_method: payment_method
           })
-          redirect_to url
+          redirect_to checkout_state_path(state: :payment,telr_url:url, pmi: params['payment_method_id'] )
         end
         
       rescue => e
@@ -51,12 +51,14 @@ module Spree
     def receiver_decl_transactions
       order = current_order || raise(ActiveRecord::RecordNotFound)
       order.next
+      flash[:error] = order.payments.failed.last.source.error_msg + " - Please try again later"
       redirect_to checkout_state_path(order.state)
     end
 
     def receiver_cancelled_transactions
       order = current_order || raise(ActiveRecord::RecordNotFound)
       order.next
+      flash[:error] = order.payments.failed.last.source.error_msg.to_s + " - Please try again later"
       redirect_to checkout_state_path(order.state)
     end
 
@@ -72,9 +74,12 @@ module Spree
     end
 
     def payload
-      { method: 'create',
+      address = @order.billing_address
+      { 
+        method: 'create',
         store: payment_method.preferred_merchant_id,
         authkey: payment_method.preferred_api_key,
+        framed: 2,
         order: {
           cartid: @order.number,
           test: payment_method.preferred_test_mode,
@@ -82,7 +87,21 @@ module Spree
           currency: 'AED',
           description: 'New Order | Transaction',
         },
-        
+        customer: {
+          email: @order.email,
+          name: {
+            title: @order.email.split('@').first
+          },
+          address:{
+            city: address.city,
+            country: address.country.iso,
+            line1: address.address1,
+            line2: address.address2,
+            line3: address.address3,
+            areacode: address.zipcode,
+            state: address.state.name 
+          }
+        },
         return: {
           authorised: telr_v2_authorized_url,
           declined:   telr_v2_declined_url,

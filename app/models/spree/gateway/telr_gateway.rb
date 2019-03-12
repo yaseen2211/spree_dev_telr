@@ -24,24 +24,6 @@ module Spree
       true
     end
 
-    def create_profile(payment)
-      return if payment.source.has_payment_profile?
-      # simulate the storage of credit card profile using remote service
-      if success = VALID_CCS.include?(payment.source.number)
-        payment.source.update_attributes(gateway_customer_profile_id: generate_profile_id(success))
-      end
-    end
-
-    def authorize(_money, credit_card, _options = {})
-      profile_id = credit_card.gateway_customer_profile_id
-      
-      if VALID_CCS.include?(credit_card.number) || (profile_id && profile_id.starts_with?('BGS-'))
-        ActiveMerchant::Billing::Response.new(true, 'Bogus Gateway: Forced success', {}, test: true, authorization: '12345', avs_result: { code: 'D' })
-      else
-        ActiveMerchant::Billing::Response.new(false, 'Bogus Gateway: Forced failure', { message: 'Bogus Gateway: Forced failure' }, test: true)
-      end
-    end
-
     def purchase(_money, telr_checkout, _options = {})
       payload = { 
         method: 'check',
@@ -65,7 +47,7 @@ module Spree
         error_msg = pp_response.dig("order","transaction","message").to_s
         error_code = pp_response.dig("order","transaction","code").to_s
         error_status = pp_response.dig("order","transaction","status").to_s
-        debugger
+
         if pp_response.dig("order","status","code") == 3
           transaction_id = pp_response.dig("order","transaction","ref")
           raise 'ErrorCode:3 -> transaction id is missinge, cannot proceed' if transaction_id.blank?
@@ -75,40 +57,17 @@ module Spree
             def success?; true; end
             def authorization; nil; end
           end.new
-        elsif error_status == 'E'
-          ret = ::ResponseClass.new error_code, error_msg, false
         else
-          ret = class << result
-            def success?; false; end
-            def to_s; 'ErrorCode:2 -> unknown error occured, please contact support'; end
-          end
-          
+          ret = ::ResponseClass.new error_code, error_msg, false
         end
       rescue => e
         errors << e.backtrace.join("\n\t")
-
-        ret = class << result
-            def success?; false; end
-            def to_s; 'ErrorCode:1 -> unknown error occured, please contact support'; end
-        end
-        
+        ret = ::ResponseClass.new '-99', 'ErrorCode:1 -> unknown error occured, please contact support', false
       end
 
       telr_checkout.update_column(:telr_errors, errors)
       ret
       
-    end
-
-    def credit(_money, _credit_card, _response_code, _options = {})
-      ActiveMerchant::Billing::Response.new(true, 'Bogus Gateway: Forced success', {}, test: true, authorization: '12345')
-    end
-
-    def capture(_money, authorization, _gateway_options)
-      if authorization == '12345'
-        ActiveMerchant::Billing::Response.new(true, 'Bogus Gateway: Forced success', {}, test: true)
-      else
-        ActiveMerchant::Billing::Response.new(false, 'Bogus Gateway: Forced failure', error: 'Bogus Gateway: Forced failure', test: true)
-      end
     end
 
     def void(_response_code, _credit_card, _options = {})
@@ -121,18 +80,6 @@ module Spree
 
     def actions
       %w(capture void credit)
-    end
-
-    private
-
-    def generate_profile_id(success)
-      record = true
-      prefix = success ? 'BGS' : 'FAIL'
-      while record
-        random = "#{prefix}-#{Array.new(6) { rand(6) }.join}"
-        record = CreditCard.find_by(gateway_customer_profile_id: random)
-      end
-      random
     end
   end
 end

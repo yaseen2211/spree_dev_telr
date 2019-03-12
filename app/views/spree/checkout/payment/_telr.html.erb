@@ -1,5 +1,8 @@
-<p>sending you to payment screen</p>
-<p>please wait...</p>
+<% if params[:telr_url].blank? %>
+	<p>sending you to payment screen</p>
+	<p>please wait...</p>
+<%else%>
+	<iframe id="telr" src="<%= params['telr_url'] %>" width="100%" height="800px"></iframe>
+<% end %>
 
-<%= link_to('Start Telr', telr_v2_url(:payment_method_id => payment_method.id), :method => :post, :id => "telr_button") %>
-
+<%= link_to('Start Telr', telr_v2_url(:payment_method_id => payment_method.id), :method => :post, :id => "telr_button", class:'hide') %>
