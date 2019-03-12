@@ -13,6 +13,5 @@ gem 'rails-controller-testing'
 
 gem 'rubocop', require: false
 gem 'rubocop-rspec', require: false
-gem "telr", :path => "/Users/omairazam/RAILS_PROJECTS/bw-extensions/telr-ruby"
 
 gemspec
