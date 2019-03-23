@@ -31,6 +31,7 @@ module Spree
       rescue => e
         flash[:error] = Spree.t('flash.connection_failed', scope: 'telr')
         redirect_to checkout_state_path(:payment)
+        raise
       end
     end
 
