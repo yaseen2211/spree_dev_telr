@@ -15,7 +15,7 @@ module Spree
         error =  result.parsed_response.dig("error") || []
 
         if(url.blank? || ref.blank?)
-          flash.now[:error] = Spree.t('flash.generic_error', scope: 'telr', reasons: error.map{|k,v|k.to_s+':'+v.to_s}.join(','))
+          flash[:error] = Spree.t('flash.generic_error', scope: 'telr', reasons: error.map{|k,v|k.to_s+':'+v.to_s}.join(','))
           redirect_to checkout_state_path(:payment)
         else
           order.payments.create!({
@@ -31,7 +31,6 @@ module Spree
       rescue => e
         flash[:error] = Spree.t('flash.connection_failed', scope: 'telr')
         redirect_to checkout_state_path(:payment)
-        raise
       end
     end
 
