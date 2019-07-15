@@ -6,7 +6,7 @@ require 'spree_telr/version'
 
 Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
-  s.name        = 'spree_telr'
+  s.name        = 'spree_dev_telr'
   s.version     = SpreeTelr.version
   s.summary     = 'Add extension summary here'
   s.description = 'Add (optional) extension description here'
